@@ -91,6 +91,12 @@ from api.v1.schemas.portfolio import (
     PortfolioFxRefreshResponse,
     PortfolioRiskResponse,
 )
+from api.v1.schemas.monitor import (
+    MonitorSummaryItem,
+    MonitorSummaryResponse,
+    RealtimeMonitorRequest,
+    RealtimeMonitorResponse,
+)
 
 __all__ = [
     # common
@@ -169,4 +175,9 @@ __all__ = [
     "PortfolioImportBrokerListResponse",
     "PortfolioFxRefreshResponse",
     "PortfolioRiskResponse",
+    # monitor
+    "MonitorSummaryItem",
+    "MonitorSummaryResponse",
+    "RealtimeMonitorRequest",
+    "RealtimeMonitorResponse",
 ]

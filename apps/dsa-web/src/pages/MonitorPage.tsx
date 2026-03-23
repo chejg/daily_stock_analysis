@@ -70,6 +70,7 @@ const parseKeyPoints = (raw: string) => {
 const MonitorPage: React.FC = () => {
   const [summaryItems, setSummaryItems] = useState<MonitorSummaryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Realtime States
@@ -93,6 +94,56 @@ const MonitorPage: React.FC = () => {
   useEffect(() => {
     fetchSummary();
   }, []);
+
+  /** 刷新汇总：先拉摘要，再并发刷新所有股票的实时行情与建议 */
+  const handleRefreshAll = async () => {
+    setIsRefreshing(true);
+    setError(null);
+    try {
+      const resp = await getMonitorSummary();
+      const items = resp.items || [];
+      setSummaryItems(items);
+
+      // 并发刷新所有股票的实时行情与建议
+      if (items.length > 0) {
+        const codes = items.map((i) => i.stock_code);
+        setRefreshingCodes(new Set(codes));
+        await Promise.allSettled(
+          codes.map(async (code) => {
+            try {
+              const rt = await getRealtimeMonitor(code);
+              if (rt.success) {
+                setRealtimeAdvice((prev) => ({ ...prev, [code]: rt.advice }));
+                setSummaryItems((prev) =>
+                  prev.map((item) =>
+                    item.stock_code === code
+                      ? { ...item, current_price: rt.current_price, change_pct: rt.change_pct }
+                      : item
+                  )
+                );
+              } else {
+                setRealtimeAdvice((prev) => ({
+                  ...prev,
+                  [code]: '获取失败：' + (rt.error_message || ''),
+                }));
+              }
+            } finally {
+              setRefreshingCodes((prev) => {
+                const next = new Set(prev);
+                next.delete(code);
+                return next;
+              });
+            }
+          })
+        );
+      }
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { detail?: string } }; message?: string };
+      setError(e?.response?.data?.detail || e?.message || '刷新失败');
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const handleRealtimeRefresh = async (stockCode: string) => {
     setRefreshingCodes((prev) => {
@@ -149,8 +200,8 @@ const MonitorPage: React.FC = () => {
           </p>
         </div>
         <div>
-          <Button onClick={fetchSummary} variant="outline" isLoading={isLoading}>
-            {!isLoading && <RefreshCw className="mr-2 h-4 w-4" />}
+          <Button onClick={handleRefreshAll} variant="outline" isLoading={isRefreshing} loadingText="刷新中...">
+            {!isRefreshing && <RefreshCw className="mr-2 h-4 w-4" />}
             刷新汇总
           </Button>
         </div>

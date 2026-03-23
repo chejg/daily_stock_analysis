@@ -28,3 +28,5 @@ test_*.py
 # 忽略文档
 *.md
 !README.md
+# 忽略策略文件
+sanxian.yaml
